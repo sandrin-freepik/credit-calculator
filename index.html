@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Credit Usage – Freepik</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:#0a0a0a;font-family:system-ui,-apple-system,sans-serif;min-height:100vh;padding:1.2rem}
+  #upload{display:flex;align-items:center;justify-content:center;min-height:100vh}
+  #drop{border:1.5px dashed #444;border-radius:12px;padding:3rem 5rem;text-align:center;cursor:pointer;transition:border-color .15s}
+  #drop:hover,#drop.drag{border-color:#fff}
+  #drop p{color:#fff;font-size:15px;margin-bottom:6px}
+  #drop small{color:#555;font-size:13px}
+  #drop input{display:none}
+  #slide-screen{display:none}
+  #topbar{display:flex;justify-content:flex-end;margin-bottom:1rem}
+  #newcsv{background:transparent;border:.5px solid #444;color:#888;border-radius:6px;padding:6px 14px;font-size:12px;cursor:pointer}
+  #slide-wrap{background:#000;border-radius:8px;width:100%;aspect-ratio:16/9;position:relative;overflow:hidden}
+  #slide-inner{position:absolute;inset:0;padding:4% 5%;display:flex;flex-direction:column}
+  #slide-title{color:#fff;font-size:clamp(14px,2.2vw,26px);font-weight:400;margin-bottom:3%;letter-spacing:-.01em;flex-shrink:0}
+  #slide-body{display:flex;gap:5%;flex:1;min-height:0}
+  #left-col{flex-shrink:0;display:flex;flex-direction:column;gap:3%}
+  #right-col{flex:1;padding-top:1%}
+  .summary-rows{display:inline-flex;flex-direction:column;gap:2px}
+  .breakdown-rows{display:inline-flex;flex-direction:column;gap:2px}
+  .row{display:flex;gap:2px}
+  .lbl{background:#fff;color:#000;font-style:italic;width:160px;flex-shrink:0;text-align:right;padding:0 16px;height:clamp(26px,3.2vh,38px);line-height:clamp(26px,3.2vh,38px);font-size:clamp(9px,1.1vw,13px);white-space:nowrap}
+  .val{background:#1a1a1a;color:#fff;text-align:center;padding:0 16px;height:clamp(26px,3.2vh,38px);line-height:clamp(26px,3.2vh,38px);font-size:clamp(9px,1.1vw,13px);border:.5px solid #2a2a2a;width:clamp(90px,11vw,160px);flex-shrink:0;white-space:nowrap}
+  .val.hdr{font-weight:600;height:clamp(26px,3.2vh,38px);line-height:clamp(26px,3.2vh,38px)}
+  .lbl-spacer{width:160px;flex-shrink:0}
+  .model-line{display:flex;gap:clamp(6px,.8vw,10px);align-items:flex-start;margin-bottom:clamp(6px,1.2vh,14px)}
+  .model-star{color:#fff;font-size:clamp(10px,1.3vw,15px);flex-shrink:0;margin-top:1px}
+  .model-text{color:#fff;font-size:clamp(9px,1.1vw,13px);line-height:1.6}
+  #logo{text-align:right;flex-shrink:0;margin-top:1%}
+  #logo span{color:#fff;font-weight:700;font-size:clamp(9px,1vw,12px);letter-spacing:.06em}
+  #logo small{color:#555;font-size:clamp(8px,.8vw,10px);margin-left:4px}
+  #footer{color:#333;font-size:11px;margin-top:8px;text-align:center}
+</style>
+</head>
+<body>
+
+<div id="upload">
+  <div id="drop">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5" style="margin-bottom:16px;display:block;margin:0 auto 16px">
+      <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+    </svg>
+    <p>Drop the project CSV here</p>
+    <small>or click to browse</small>
+    <input type="file" id="fileinput" accept=".csv"/>
+  </div>
+</div>
+
+<div id="slide-screen">
+  <div id="topbar">
+    <button id="newcsv">← New CSV</button>
+  </div>
+  <div id="slide-wrap">
+    <div id="slide-inner">
+      <div id="slide-title"></div>
+      <div id="slide-body">
+        <div id="left-col">
+          <div class="summary-rows" id="summary-rows"></div>
+          <div class="breakdown-rows" id="breakdown-rows"></div>
+        </div>
+        <div id="right-col"></div>
+      </div>
+      <div id="logo"><span>FREEP!K</span><small>Enterprise</small></div>
+    </div>
+  </div>
+  <p id="footer"></p>
+</div>
+
+<script>
+const CATEGORY_MAP = {
+  "AI Image Models":"Image generation",
+  "AI Video Models":"Video generation",
+  "AI Audio Models":"Audio",
+  "AI Image Edition":"Retouching"
+};
+const THREE_D = ["3d","trellis","tripo","worldlabs"];
+const UPSCALER = ["upscal"];
+const ROW_ORDER = ["Image generation","Video generation","Video Upscaler","Retouching","Audio","3D"];
+
+function classify(tool){
+  const t = tool.toLowerCase();
+  if(THREE_D.some(k=>t.includes(k))) return "3D";
+  if(UPSCALER.some(k=>t.includes(k))) return "Video Upscaler";
+  return CATEGORY_MAP[tool]??null;
+}
+
+function fmtK(n){
+  const r=Math.round(n);
+  if(r>=1000000) return "~"+(r/1000000).toFixed(1)+"M";
+  if(r>=1000) return "~"+(r/1000).toFixed(r%1000===0?0:1)+"K";
+  return "~"+r.toLocaleString();
+}
+
+function processCSV(text){
+  Papa.parse(text,{
+    header:true,skipEmptyLines:true,dynamicTyping:true,
+    complete({data:rows}){
+      const stats={},users=new Set();
+      let total=0,minD=null,maxD=null,proj="";
+      rows.forEach(r=>{
+        const cat=classify(r.Tool?.trim()||"");
+        if(!cat) return;
+        const u=Number(r.UserUses)||0,c=Number(r.UserCredits)||0;
+        if(!stats[cat]) stats[cat]={uses:0,credits:0};
+        stats[cat].uses+=u; stats[cat].credits+=c; total+=c;
+        if(r.Username) users.add(r.Username);
+        if(!proj&&r.Project) proj=r.Project.replace(/^"|"$/g,"");
+        if(r.Date){
+          const [m,d,y]=r.Date.split("/").map(Number);
+          const dt=new Date(y,m-1,d);
+          if(!minD||dt<minD) minD=dt;
+          if(!maxD||dt>maxD) maxD=dt;
+        }
+      });
+      const days=minD&&maxD?Math.round((maxD-minD)/86400000)+1:0;
+      renderSlide({stats,users:users.size,total,days,proj});
+    }
+  });
+}
+
+function makeRow(lblText, vals){
+  const row=document.createElement("div");
+  row.className="row";
+  const lbl=document.createElement("div");
+  lbl.className="lbl"; lbl.textContent=lblText;
+  row.appendChild(lbl);
+  vals.forEach(v=>{
+    const d=document.createElement("div");
+    d.className="val"; d.textContent=v;
+    row.appendChild(d);
+  });
+  return row;
+}
+
+function renderSlide({stats,users,total,days,proj}){
+  document.getElementById("upload").style.display="none";
+  document.getElementById("slide-screen").style.display="block";
+
+  document.getElementById("slide-title").textContent="Credit usage – "+(proj||"Project");
+
+  // Summary
+  const sumEl=document.getElementById("summary-rows");
+  sumEl.innerHTML="";
+  [
+    ["Team involved", `${users} ${users===1?"person":"people"}`],
+    ["Total time invested", `~${days} ${days===1?"day":"days"}`],
+    ["Total credits used", fmtK(total)],
+  ].forEach(([l,v])=>sumEl.appendChild(makeRow(l,[v])));
+
+  // Breakdown
+  const brkEl=document.getElementById("breakdown-rows");
+  brkEl.innerHTML="";
+  // header
+  const hdr=document.createElement("div"); hdr.className="row";
+  const sp=document.createElement("div"); sp.className="lbl-spacer"; hdr.appendChild(sp);
+  ["Amount","Credits"].forEach(h=>{
+    const d=document.createElement("div"); d.className="val hdr"; d.textContent=h; hdr.appendChild(d);
+  });
+  brkEl.appendChild(hdr);
+  // data rows
+  const activeRows=ROW_ORDER.filter(r=>stats[r]);
+  activeRows.forEach(r=>{
+    brkEl.appendChild(makeRow(r,[
+      Math.round(stats[r].uses).toLocaleString(),
+      Math.round(stats[r].credits).toLocaleString()
+    ]));
+  });
+
+  // Right col — model placeholders
+  const right=document.getElementById("right-col");
+  right.innerHTML="";
+  [["Image generation","Generative image models"],["Video generation","Video models"]]
+    .filter(([cat])=>stats[cat])
+    .forEach(([,lbl])=>{
+      const line=document.createElement("div"); line.className="model-line";
+      const star=document.createElement("span"); star.className="model-star"; star.textContent="✦";
+      const txt=document.createElement("span"); txt.className="model-text"; txt.textContent=lbl+":";
+      line.appendChild(star); line.appendChild(txt);
+      right.appendChild(line);
+    });
+
+  document.getElementById("footer").textContent=`${users} users · ${activeRows.length} categories · screenshot ready`;
+}
+
+// Drop zone
+const drop=document.getElementById("drop");
+const fileInput=document.getElementById("fileinput");
+
+drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("drag")});
+drop.addEventListener("dragleave",()=>drop.classList.remove("drag"));
+drop.addEventListener("drop",e=>{
+  e.preventDefault(); drop.classList.remove("drag");
+  const f=e.dataTransfer.files[0]; if(f) readFile(f);
+});
+drop.addEventListener("click",()=>fileInput.click());
+fileInput.addEventListener("change",e=>{if(e.target.files[0]) readFile(e.target.files[0])});
+document.getElementById("newcsv").addEventListener("click",()=>{
+  document.getElementById("slide-screen").style.display="none";
+  document.getElementById("upload").style.display="flex";
+  fileInput.value="";
+});
+
+function readFile(f){
+  const r=new FileReader();
+  r.onload=e=>processCSV(e.target.result);
+  r.readAsText(f);
+}
+</script>
+</body>
+</html>
