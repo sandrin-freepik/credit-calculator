@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -157,9 +158,10 @@ function renderSlide({stats,users,total,days,proj}){
   ].forEach(([l,v])=>sumEl.appendChild(makeRow(l,[v])));
 
   // Cost row
-  const costRow=document.createElement("div"); costRow.className="cost-row";
-  const costLbl=document.createElement("span"); costLbl.className="cost-label"; costLbl.textContent="✱1 Enterprise Credit = 0.0025$";
-  const costVal=document.createElement("span"); costVal.className="cost-value";
+  const costRow=document.createElement("div"); costRow.style.cssText="display:flex;gap:2px;margin-top:4px";
+  const costLbl=document.createElement("div"); costLbl.style.cssText="width:160px;flex-shrink:0;text-align:right;padding:0 16px;color:#888;font-size:clamp(8px,.9vw,11px);font-style:italic;white-space:nowrap";
+  costLbl.textContent="*1 Enterprise Credit = 0.0025$";
+  const costVal=document.createElement("div"); costVal.style.cssText="width:clamp(90px,11vw,160px);flex-shrink:0;text-align:center;color:#fff;font-size:clamp(9px,1.1vw,13px)";
   costVal.textContent="~"+Math.round(total*0.0025).toLocaleString("en-US")+"$";
   costRow.appendChild(costLbl); costRow.appendChild(costVal);
   sumEl.appendChild(costRow);
