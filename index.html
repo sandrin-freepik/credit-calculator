@@ -30,6 +30,9 @@
   .val{background:#1a1a1a;color:#fff;text-align:center;padding:0 16px;height:clamp(26px,3.2vh,38px);line-height:clamp(26px,3.2vh,38px);font-size:clamp(9px,1.1vw,13px);border:.5px solid #2a2a2a;width:clamp(90px,11vw,160px);flex-shrink:0;white-space:nowrap}
   .val.hdr{font-weight:600;height:clamp(26px,3.2vh,38px);line-height:clamp(26px,3.2vh,38px)}
   .lbl-spacer{width:160px;flex-shrink:0}
+  .cost-row{display:flex;align-items:baseline;gap:16px;margin-top:4px}
+  .cost-label{color:#888;font-size:clamp(8px,.9vw,11px);font-style:italic}
+  .cost-value{color:#fff;font-size:clamp(9px,1.1vw,13px)}
   .model-line{display:flex;gap:clamp(6px,.8vw,10px);align-items:flex-start;margin-bottom:clamp(6px,1.2vh,14px)}
   .model-star{color:#fff;font-size:clamp(10px,1.3vw,15px);flex-shrink:0;margin-top:1px}
   .model-text{color:#fff;font-size:clamp(9px,1.1vw,13px);line-height:1.6}
@@ -152,6 +155,14 @@ function renderSlide({stats,users,total,days,proj}){
     ["Total time invested", `~${days} ${days===1?"day":"days"}`],
     ["Total credits used", fmtK(total)],
   ].forEach(([l,v])=>sumEl.appendChild(makeRow(l,[v])));
+
+  // Cost row
+  const costRow=document.createElement("div"); costRow.className="cost-row";
+  const costLbl=document.createElement("span"); costLbl.className="cost-label"; costLbl.textContent="✱1 Enterprise Credit = 0.0025$";
+  const costVal=document.createElement("span"); costVal.className="cost-value";
+  costVal.textContent="~"+Math.round(total*0.0025).toLocaleString("en-US")+"$";
+  costRow.appendChild(costLbl); costRow.appendChild(costVal);
+  sumEl.appendChild(costRow);
 
   // Breakdown
   const brkEl=document.getElementById("breakdown-rows");
