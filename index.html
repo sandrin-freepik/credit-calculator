@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -22,18 +21,16 @@
   #slide-inner{position:absolute;inset:0;padding:4% 5%;display:flex;flex-direction:column}
   #slide-title{color:#fff;font-size:clamp(14px,2.2vw,26px);font-weight:400;margin-bottom:3%;letter-spacing:-.01em;flex-shrink:0}
   #slide-body{display:flex;gap:5%;flex:1;min-height:0}
-  #left-col{flex-shrink:0;display:flex;flex-direction:column;gap:3%}
+  #left-col{flex-shrink:0;display:flex;flex-direction:column;gap:2%}
   #right-col{flex:1;padding-top:1%}
-  .summary-rows{display:inline-flex;flex-direction:column;gap:2px}
-  .breakdown-rows{display:inline-flex;flex-direction:column;gap:2px}
+  .rows{display:inline-flex;flex-direction:column;gap:2px}
   .row{display:flex;gap:2px}
-  .lbl{background:#fff;color:#000;font-style:italic;width:160px;flex-shrink:0;text-align:right;padding:0 16px;height:clamp(26px,3.2vh,38px);line-height:clamp(26px,3.2vh,38px);font-size:clamp(9px,1.1vw,13px);white-space:nowrap}
+  .lbl{background:#fff;color:#000;font-style:italic;width:180px;flex-shrink:0;text-align:right;padding:0 16px;height:clamp(26px,3.2vh,38px);line-height:clamp(26px,3.2vh,38px);font-size:clamp(9px,1.1vw,13px);white-space:nowrap}
   .val{background:#1a1a1a;color:#fff;text-align:center;padding:0 16px;height:clamp(26px,3.2vh,38px);line-height:clamp(26px,3.2vh,38px);font-size:clamp(9px,1.1vw,13px);border:.5px solid #2a2a2a;width:clamp(90px,11vw,160px);flex-shrink:0;white-space:nowrap}
-  .val.hdr{font-weight:600;height:clamp(26px,3.2vh,38px);line-height:clamp(26px,3.2vh,38px)}
-  .lbl-spacer{width:160px;flex-shrink:0}
-  .cost-row{display:flex;align-items:baseline;gap:16px;margin-top:4px}
-  .cost-label{color:#888;font-size:clamp(8px,.9vw,11px);font-style:italic}
-  .cost-value{color:#fff;font-size:clamp(9px,1.1vw,13px)}
+  .val.hdr{font-weight:600}
+  .lbl-spacer{width:180px;flex-shrink:0}
+  .cost-lbl{width:180px;flex-shrink:0;text-align:right;padding:0 16px;color:#888;font-size:clamp(8px,.9vw,11px);font-style:italic;white-space:nowrap}
+  .cost-val{width:clamp(90px,11vw,160px);flex-shrink:0;text-align:center;color:#fff;font-size:clamp(9px,1.1vw,13px)}
   .model-line{display:flex;gap:clamp(6px,.8vw,10px);align-items:flex-start;margin-bottom:clamp(6px,1.2vh,14px)}
   .model-star{color:#fff;font-size:clamp(10px,1.3vw,15px);flex-shrink:0;margin-top:1px}
   .model-text{color:#fff;font-size:clamp(9px,1.1vw,13px);line-height:1.6}
@@ -47,7 +44,7 @@
 
 <div id="upload">
   <div id="drop">
-    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5" style="margin-bottom:16px;display:block;margin:0 auto 16px">
+    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#666" stroke-width="1.5" style="margin:0 auto 16px;display:block">
       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
     </svg>
     <p>Drop the project CSV here</p>
@@ -58,15 +55,16 @@
 
 <div id="slide-screen">
   <div id="topbar">
-    <button id="newcsv">← New CSV</button>
+    <button id="newcsv">New CSV</button>
   </div>
   <div id="slide-wrap">
     <div id="slide-inner">
       <div id="slide-title"></div>
       <div id="slide-body">
         <div id="left-col">
-          <div class="summary-rows" id="summary-rows"></div>
-          <div class="breakdown-rows" id="breakdown-rows"></div>
+          <div class="rows" id="summary-rows"></div>
+          <div class="row" id="cost-row" style="margin-top:2px"></div>
+          <div class="rows" id="breakdown-rows" style="margin-top:2%"></div>
         </div>
         <div id="right-col"></div>
       </div>
@@ -77,21 +75,30 @@
 </div>
 
 <script>
-const CATEGORY_MAP = {
-  "AI Image Models":"Image generation",
-  "AI Video Models":"Video generation",
-  "AI Audio Models":"Audio",
-  "AI Image Edition":"Retouching"
-};
-const THREE_D = ["3d","trellis","tripo","worldlabs"];
-const UPSCALER = ["upscal"];
-const ROW_ORDER = ["Image generation","Video generation","Video Upscaler","Retouching","Audio","3D"];
+const THREE_D_KEYS = ["3d","trellis","tripo","worldlabs"];
+const IMAGE_UPSCALE_KEYS = ["image-upscal","image_upscal"];
+const VIDEO_UPSCALE_KEYS = ["video-upscal","video_upscal"];
+const PIKASO_VIDEO_KEYS = ["pikaso-video"];
+
+const ROW_ORDER = [
+  "Image generation & upscaling",
+  "Video generation & upscaling",
+  "Retouching",
+  "Audio generation",
+  "3D"
+];
 
 function classify(tool){
-  const t = tool.toLowerCase();
-  if(THREE_D.some(k=>t.includes(k))) return "3D";
-  if(UPSCALER.some(k=>t.includes(k))) return "Video Upscaler";
-  return CATEGORY_MAP[tool]??null;
+  const t=tool.toLowerCase();
+  if(THREE_D_KEYS.some(k=>t.includes(k))) return "3D";
+  if(IMAGE_UPSCALE_KEYS.some(k=>t.includes(k))) return "Image generation & upscaling";
+  if(VIDEO_UPSCALE_KEYS.some(k=>t.includes(k))) return "Video generation & upscaling";
+  if(PIKASO_VIDEO_KEYS.some(k=>t.includes(k))) return "Video generation & upscaling";
+  if(tool==="AI Image Models") return "Image generation & upscaling";
+  if(tool==="AI Video Models") return "Video generation & upscaling";
+  if(tool==="AI Audio Models") return "Audio generation";
+  if(tool==="AI Image Edition") return "Retouching";
+  return null;
 }
 
 function fmtK(n){
@@ -99,6 +106,71 @@ function fmtK(n){
   if(r>=1000000) return "~"+(r/1000000).toFixed(1)+"M";
   if(r>=1000) return "~"+(r/1000).toFixed(r%1000===0?0:1)+"K";
   return "~"+r.toLocaleString();
+}
+
+function makeEl(tag,cls,text,styles){
+  const el=document.createElement(tag);
+  if(cls) el.className=cls;
+  if(text!==undefined) el.textContent=text;
+  if(styles) Object.assign(el.style,styles);
+  return el;
+}
+
+function renderSlide({stats,users,total,days,proj}){
+  document.getElementById("upload").style.display="none";
+  document.getElementById("slide-screen").style.display="block";
+  document.getElementById("slide-title").textContent="Credit usage - "+(proj||"Project");
+
+  // Summary
+  const sumEl=document.getElementById("summary-rows");
+  sumEl.innerHTML="";
+  [
+    ["Team involved", users+" "+(users===1?"person":"people")],
+    ["Total time invested", "~"+days+" "+(days===1?"day":"days")],
+    ["Total credits used", fmtK(total)],
+  ].forEach(([l,v])=>{
+    const row=makeEl("div","row");
+    row.appendChild(makeEl("div","lbl",l));
+    row.appendChild(makeEl("div","val",v));
+    sumEl.appendChild(row);
+  });
+
+  // Cost row
+  const costEl=document.getElementById("cost-row");
+  costEl.innerHTML="";
+  costEl.appendChild(makeEl("div","cost-lbl","*1 Enterprise Credit = 0.0025$"));
+  costEl.appendChild(makeEl("div","cost-val","~"+Math.round(total*0.0025).toLocaleString("en-US")+"$"));
+
+  // Breakdown
+  const brkEl=document.getElementById("breakdown-rows");
+  brkEl.innerHTML="";
+  const hdr=makeEl("div","row");
+  hdr.appendChild(makeEl("div","lbl-spacer"));
+  ["Amount","Credits"].forEach(h=>hdr.appendChild(makeEl("div","val hdr",h)));
+  brkEl.appendChild(hdr);
+
+  ROW_ORDER.forEach(row=>{
+    const r=makeEl("div","row");
+    r.appendChild(makeEl("div","lbl",row));
+    r.appendChild(makeEl("div","val", stats[row]?Math.round(stats[row].uses).toLocaleString():""));
+    r.appendChild(makeEl("div","val", stats[row]?Math.round(stats[row].credits).toLocaleString():""));
+    brkEl.appendChild(r);
+  });
+
+  // Right col
+  const right=document.getElementById("right-col");
+  right.innerHTML="";
+  [
+    ["Image generation & upscaling","Generative image models"],
+    ["Video generation & upscaling","Video models"],
+  ].filter(([cat])=>stats[cat]).forEach(([,lbl])=>{
+    const line=makeEl("div","model-line");
+    line.appendChild(makeEl("span","model-star","+"));
+    line.appendChild(makeEl("span","model-text",lbl+":"));
+    right.appendChild(line);
+  });
+
+  document.getElementById("footer").textContent=users+" users · screenshot ready";
 }
 
 function processCSV(text){
@@ -116,7 +188,7 @@ function processCSV(text){
         if(r.Username) users.add(r.Username);
         if(!proj&&r.Project) proj=r.Project.replace(/^"|"$/g,"");
         if(r.Date){
-          const [m,d,y]=r.Date.split("/").map(Number);
+          const[m,d,y]=r.Date.split("/").map(Number);
           const dt=new Date(y,m-1,d);
           if(!minD||dt<minD) minD=dt;
           if(!maxD||dt>maxD) maxD=dt;
@@ -128,102 +200,19 @@ function processCSV(text){
   });
 }
 
-function makeRow(lblText, vals){
-  const row=document.createElement("div");
-  row.className="row";
-  const lbl=document.createElement("div");
-  lbl.className="lbl"; lbl.textContent=lblText;
-  row.appendChild(lbl);
-  vals.forEach(v=>{
-    const d=document.createElement("div");
-    d.className="val"; d.textContent=v;
-    row.appendChild(d);
-  });
-  return row;
-}
-
-function renderSlide({stats,users,total,days,proj}){
-  document.getElementById("upload").style.display="none";
-  document.getElementById("slide-screen").style.display="block";
-
-  document.getElementById("slide-title").textContent="Credit usage – "+(proj||"Project");
-
-  // Summary
-  const sumEl=document.getElementById("summary-rows");
-  sumEl.innerHTML="";
-  [
-    ["Team involved", `${users} ${users===1?"person":"people"}`],
-    ["Total time invested", `~${days} ${days===1?"day":"days"}`],
-    ["Total credits used", fmtK(total)],
-  ].forEach(([l,v])=>sumEl.appendChild(makeRow(l,[v])));
-
-  // Cost row
-  const costRow=document.createElement("div"); costRow.style.cssText="display:flex;gap:2px;margin-top:4px";
-  const costLbl=document.createElement("div"); costLbl.style.cssText="width:160px;flex-shrink:0;text-align:right;padding:0 16px;color:#888;font-size:clamp(8px,.9vw,11px);font-style:italic;white-space:nowrap";
-  costLbl.textContent="*1 Enterprise Credit = 0.0025$";
-  const costVal=document.createElement("div"); costVal.style.cssText="width:clamp(90px,11vw,160px);flex-shrink:0;text-align:center;color:#fff;font-size:clamp(9px,1.1vw,13px)";
-  costVal.textContent="~"+Math.round(total*0.0025).toLocaleString("en-US")+"$";
-  costRow.appendChild(costLbl); costRow.appendChild(costVal);
-  sumEl.appendChild(costRow);
-
-  // Breakdown
-  const brkEl=document.getElementById("breakdown-rows");
-  brkEl.innerHTML="";
-  // header
-  const hdr=document.createElement("div"); hdr.className="row";
-  const sp=document.createElement("div"); sp.className="lbl-spacer"; hdr.appendChild(sp);
-  ["Amount","Credits"].forEach(h=>{
-    const d=document.createElement("div"); d.className="val hdr"; d.textContent=h; hdr.appendChild(d);
-  });
-  brkEl.appendChild(hdr);
-  // data rows
-  const activeRows=ROW_ORDER.filter(r=>stats[r]);
-  activeRows.forEach(r=>{
-    brkEl.appendChild(makeRow(r,[
-      Math.round(stats[r].uses).toLocaleString(),
-      Math.round(stats[r].credits).toLocaleString()
-    ]));
-  });
-
-  // Right col — model placeholders
-  const right=document.getElementById("right-col");
-  right.innerHTML="";
-  [["Image generation","Generative image models"],["Video generation","Video models"]]
-    .filter(([cat])=>stats[cat])
-    .forEach(([,lbl])=>{
-      const line=document.createElement("div"); line.className="model-line";
-      const star=document.createElement("span"); star.className="model-star"; star.textContent="✦";
-      const txt=document.createElement("span"); txt.className="model-text"; txt.textContent=lbl+":";
-      line.appendChild(star); line.appendChild(txt);
-      right.appendChild(line);
-    });
-
-  document.getElementById("footer").textContent=`${users} users · ${activeRows.length} categories · screenshot ready`;
-}
-
-// Drop zone
 const drop=document.getElementById("drop");
 const fileInput=document.getElementById("fileinput");
-
 drop.addEventListener("dragover",e=>{e.preventDefault();drop.classList.add("drag")});
 drop.addEventListener("dragleave",()=>drop.classList.remove("drag"));
-drop.addEventListener("drop",e=>{
-  e.preventDefault(); drop.classList.remove("drag");
-  const f=e.dataTransfer.files[0]; if(f) readFile(f);
-});
+drop.addEventListener("drop",e=>{e.preventDefault();drop.classList.remove("drag");const f=e.dataTransfer.files[0];if(f)readFile(f)});
 drop.addEventListener("click",()=>fileInput.click());
-fileInput.addEventListener("change",e=>{if(e.target.files[0]) readFile(e.target.files[0])});
+fileInput.addEventListener("change",e=>{if(e.target.files[0])readFile(e.target.files[0])});
 document.getElementById("newcsv").addEventListener("click",()=>{
   document.getElementById("slide-screen").style.display="none";
   document.getElementById("upload").style.display="flex";
   fileInput.value="";
 });
-
-function readFile(f){
-  const r=new FileReader();
-  r.onload=e=>processCSV(e.target.result);
-  r.readAsText(f);
-}
+function readFile(f){const r=new FileReader();r.onload=e=>processCSV(e.target.result);r.readAsText(f);}
 </script>
 </body>
 </html>
